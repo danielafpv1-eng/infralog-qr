@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>INFRALOG 2026 - Lector QR</title>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f4f6f8;
+      text-align: center;
+    }
+
+    .contenedor {
+      max-width: 500px;
+      margin: 30px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    h2 {
+      margin-top: 5px;
+      font-weight: normal;
+    }
+
+    #lectorQR {
+      width: 100%;
+      max-width: 400px;
+      margin: 20px auto;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      margin-top: 15px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #resultado {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <div class="contenedor">
+
+    <h1>INFRALOG 2026</h1>
+
+    <h2>Lector QR</h2>
+
+    <p>
+      Pulsa el botón para activar la cámara.
+    </p>
+
+    <div id="lectorQR"></div>
+
+    <div id="resultado">
+      Esperando código...
+    </div>
+
+  </div>
+
+
+  <script>
+
+    let lectorQR = null;
+
+
+    function iniciarLector() {
+
+      lectorQR = new Html5Qrcode("lectorQR");
+
+
+      const configuracion = {
+        fps: 10,
+        qrbox: {
+          width: 250,
+          height: 250
+        }
+      };
+
+
+      lectorQR.start(
+
+        {
+          facingMode: "environment"
+        },
+
+        configuracion,
+
+        function(codigo) {
+
+          console.log("QR detectado:", codigo);
+
+          document.getElementById("resultado").innerHTML =
+            "<h2>✅ Código detectado</h2>" +
+            "<h1>" + codigo + "</h1>";
+
+          lectorQR.stop();
+
+        },
+
+        function(error) {
+
+          // Errores normales mientras busca el QR.
+          // No mostramos nada.
+
+        }
+
+      ).catch(function(error) {
+
+        console.error(error);
+
+        document.getElementById("resultado").innerHTML =
+          "<p style='color:red'>" +
+          "❌ No se pudo acceder a la cámara." +
+          "</p>";
+
+      });
+
+    }
+
+
+    // Iniciar automáticamente
+
+    window.onload = function() {
+      iniciarLector();
+    };
+
+  </script>
+
+</body>
+
+</html>
