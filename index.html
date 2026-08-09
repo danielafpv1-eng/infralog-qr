@@ -5,7 +5,8 @@
 
   <meta charset="UTF-8">
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
   <title>INFRALOG 2026</title>
 
@@ -15,17 +16,19 @@
 
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
-      background: #f4f6f8;
+      margin: 0;
       padding: 20px;
+      background: #f4f6f8;
+      text-align: center;
     }
 
     .contenedor {
       max-width: 500px;
-      margin: auto;
+      margin: 20px auto;
       background: white;
       padding: 25px;
       border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
 
     #lectorQR {
@@ -36,14 +39,38 @@
 
     #resultado {
       margin-top: 20px;
-      font-size: 18px;
+    }
+
+    .exito {
+      padding: 20px;
+      border: 2px solid green;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+
+    .alerta {
+      padding: 20px;
+      border: 2px solid orange;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+
+    .error {
+      padding: 20px;
+      border: 2px solid red;
+      border-radius: 12px;
+      margin-top: 20px;
     }
 
     button {
-      padding: 15px;
       width: 100%;
+      padding: 15px;
       margin-top: 15px;
       font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      background: #222;
+      color: white;
     }
 
   </style>
@@ -82,20 +109,24 @@
 <script>
 
 
-// =================================================
-// URL DE APPS SCRIPT
-// =================================================
+// ==========================================
+// URL APPS SCRIPT
+// ==========================================
 
 const URL_APPS_SCRIPT =
 "https://script.google.com/macros/s/AKfycbzUz3S11j8Efrm1_3uN0KjifOCN96NbXt4Rn6ZKe0wqF4kmkvpje0vT4hhMjTMVjkpu/exec";
 
 
-// =================================================
-// INICIAR LECTOR
-// =================================================
+// ==========================================
+// LECTOR
+// ==========================================
 
-let lectorQR;
+let lectorQR = null;
 
+
+// ==========================================
+// INICIAR
+// ==========================================
 
 function iniciarEscaner() {
 
@@ -120,37 +151,32 @@ function iniciarEscaner() {
     },
 
 
-  function(codigo) {
+    function(codigo) {
 
-  console.log("QR detectado:", codigo);
+      console.log(
+        "QR detectado:",
+        codigo
+      );
 
-  document.getElementById("resultado").innerHTML = `
-    <div style="
-      padding:20px;
-      border:3px solid green;
-      border-radius:15px;
-      background:white;
-    ">
 
-      <h2>✅ QR LEÍDO</h2>
+      lectorQR.stop()
+        .then(function() {
 
-      <h1>${codigo}</h1>
+          consultarInvitado(codigo);
 
-      <p>La cámara y el lector funcionan correctamente.</p>
+        })
+        .catch(function() {
 
-      <p>Ahora vamos a probar la conexión.</p>
+          consultarInvitado(codigo);
 
-    </div>
-  `;
+        });
 
-  lectorQR.stop();
-
-},
+    },
 
 
     function(error) {
 
-      // No hacemos nada mientras busca QR.
+      // Ignorar errores normales del escaneo
 
     }
 
@@ -158,19 +184,32 @@ function iniciarEscaner() {
 
   .catch(function(error) {
 
-    document.getElementById("resultado").innerHTML =
-      "<p style='color:red'>❌ No se pudo acceder a la cámara.</p>";
+    console.error(error);
+
+    document.getElementById("resultado").innerHTML = `
+
+      <div class="error">
+
+        ❌ No se pudo acceder a la cámara.
+
+      </div>
+
+    `;
 
   });
 
 }
 
 
-// =================================================
-// REGISTRAR ASISTENCIA
-// =================================================
+// ==========================================
+// CONSULTAR APPS SCRIPT
+// ==========================================
 
-function registrarAsistencia(id) {
+function consultarInvitado(id) {
+
+
+  const callback =
+    "respuesta_" + Date.now();
 
 
   document.getElementById("resultado").innerHTML = `
@@ -179,53 +218,302 @@ function registrarAsistencia(id) {
 
     <h3>${id}</h3>
 
-    <p>⏳ Registrando asistencia...</p>
+    <p>⏳ Consultando registro...</p>
 
   `;
 
 
-  // Creamos un formulario invisible.
-  // Esto evita el problema de comunicación
-  // directa entre GitHub y Apps Script.
+  // ==========================================
+  // CREAR FUNCIÓN GLOBAL
+  // ==========================================
 
-  const formulario =
-    document.createElement("form");
+  window[callback] = function(datos) {
 
-
-  formulario.method = "GET";
-
-  formulario.action =
-    URL_APPS_SCRIPT;
+    console.log(
+      "RESPUESTA:",
+      datos
+    );
 
 
-  formulario.target =
-    "_blank";
+    // ========================================
+    // NO ENCONTRADO
+    // ========================================
+
+    if (
+      datos.mensaje === "NO_ENCONTRADO"
+    ) {
+
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="error">
+
+          <h2>❌ Invitado no encontrado</h2>
+
+          <p>
+            Código: <b>${id}</b>
+          </p>
+
+        </div>
+
+      `;
+
+      limpiarCallback(callback);
+
+      return;
+
+    }
 
 
-  const campo =
-    document.createElement("input");
+    // ========================================
+    // ERROR
+    // ========================================
+
+    if (
+      datos.mensaje === "ERROR"
+    ) {
+
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="error">
+
+          <h2>❌ Error</h2>
+
+          <p>
+            ${datos.error}
+          </p>
+
+        </div>
+
+      `;
+
+      limpiarCallback(callback);
+
+      return;
+
+    }
 
 
-  campo.type = "hidden";
+    // ========================================
+    // YA REGISTRADO
+    // ========================================
 
-  campo.name = "id";
+    if (
+      datos.mensaje === "YA_REGISTRADO"
+    ) {
 
-  campo.value = id;
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="alerta">
+
+          <h2>⚠️ YA REGISTRADO</h2>
+
+          <h3>
+            ${datos.nombre}
+            ${datos.apellido}
+          </h3>
+
+          <p>
+            <b>Empresa:</b>
+            ${datos.empresa}
+          </p>
+
+          <p>
+            Este invitado ya registró su ingreso.
+          </p>
+
+        </div>
+
+      `;
+
+      limpiarCallback(callback);
+
+      return;
+
+    }
 
 
-  formulario.appendChild(campo);
+    // ========================================
+    // REGISTRADO
+    // ========================================
 
-  document.body.appendChild(formulario);
+    if (
+      datos.mensaje === "REGISTRADO"
+    ) {
+
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="exito">
+
+          <h2>✅ REGISTRO EXITOSO</h2>
+
+          <h3>
+            ${datos.nombre}
+            ${datos.apellido}
+          </h3>
+
+          <p>
+            <b>Cargo:</b>
+            ${datos.cargo}
+          </p>
+
+          <p>
+            <b>Empresa:</b>
+            ${datos.empresa}
+          </p>
+
+          <p>
+            <b>Hora:</b>
+            ${formatearFecha(datos.horaIngreso)}
+          </p>
+
+        </div>
+
+      `;
+
+      limpiarCallback(callback);
+
+      return;
+
+    }
+
+  };
 
 
-  formulario.submit();
+  // ==========================================
+  // CREAR SCRIPT JSONP
+  // ==========================================
+
+  const script =
+    document.createElement("script");
+
+
+  script.id =
+    callback;
+
+
+  script.src =
+    URL_APPS_SCRIPT +
+    "?id=" +
+    encodeURIComponent(id) +
+    "&callback=" +
+    callback;
+
+
+  script.onerror = function() {
+
+    document.getElementById("resultado").innerHTML = `
+
+      <div class="error">
+
+        <h2>❌ Error de conexión</h2>
+
+        <p>
+          No se pudo comunicar con Apps Script.
+        </p>
+
+      </div>
+
+    `;
+
+    limpiarCallback(callback);
+
+  };
+
+
+  document.body.appendChild(script);
+
+
+  // ==========================================
+  // TIEMPO MÁXIMO DE ESPERA
+  // ==========================================
+
+  setTimeout(function() {
+
+    if (
+      typeof window[callback] === "function"
+    ) {
+
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="error">
+
+          <h2>❌ Tiempo agotado</h2>
+
+          <p>
+            Apps Script no respondió.
+          </p>
+
+        </div>
+
+      `;
+
+      limpiarCallback(callback);
+
+    }
+
+  }, 10000);
 
 }
 
 
-// =================================================
+// ==========================================
+// LIMPIAR CALLBACK
+// ==========================================
+
+function limpiarCallback(callback) {
+
+  try {
+
+    delete window[callback];
+
+  } catch (e) {
+
+    window[callback] = undefined;
+
+  }
+
+
+  const script =
+    document.getElementById(callback);
+
+
+  if (script) {
+    script.remove();
+  }
+
+}
+
+
+// ==========================================
+// FECHA
+// ==========================================
+
+function formatearFecha(fecha) {
+
+  if (!fecha) {
+    return "";
+  }
+
+
+  const f =
+    new Date(fecha);
+
+
+  if (isNaN(f)) {
+    return fecha;
+  }
+
+
+  return f.toLocaleString(
+    "es-PE"
+  );
+
+}
+
+
+// ==========================================
 // REINICIAR
-// =================================================
+// ==========================================
 
 function reiniciarEscaner() {
 
@@ -234,9 +522,9 @@ function reiniciarEscaner() {
 }
 
 
-// =================================================
-// INICIAR
-// =================================================
+// ==========================================
+// ARRANCAR
+// ==========================================
 
 window.onload = function() {
 
@@ -245,7 +533,6 @@ window.onload = function() {
 };
 
 </script>
-
 
 </body>
 
