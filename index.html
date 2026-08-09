@@ -5,8 +5,7 @@
 
   <meta charset="UTF-8">
 
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>INFRALOG 2026 - Registro</title>
 
@@ -124,7 +123,7 @@
 
 
 // ==================================================
-// URL DE TU GOOGLE APPS SCRIPT
+// URL DE GOOGLE APPS SCRIPT
 // ==================================================
 
 const URL_APPS_SCRIPT =
@@ -180,8 +179,6 @@ function iniciarEscaner() {
       );
 
 
-      // Detener cámara
-
       lectorQR.stop().then(function() {
 
         consultarAppsScript(codigoEscaneado);
@@ -193,8 +190,8 @@ function iniciarEscaner() {
 
     function(error) {
 
-      // No mostrar errores normales
-      // mientras busca el QR.
+      // Errores normales mientras busca el QR.
+      // No mostramos nada.
 
     }
 
@@ -230,22 +227,30 @@ function iniciarEscaner() {
 function consultarAppsScript(id) {
 
 
+  const nombreCallback =
+    "respuesta_" + Date.now();
+
+
+  // Mostrar que ya detectamos el QR
+
   document.getElementById("resultado").innerHTML = `
 
-    <p>🔍 Código detectado:</p>
+    <div>
 
-    <h2>${id}</h2>
+      <h2>🔍 Código detectado</h2>
 
-    <p>⏳ Registrando asistencia...</p>
+      <h3>${id}</h3>
+
+      <p>⏳ Consultando registro...</p>
+
+    </div>
 
   `;
 
 
-  // JSONP
-
-  const nombreCallback =
-    "respuesta_" + Date.now();
-
+  // ================================================
+  // FUNCIÓN QUE RECIBIRÁ LA RESPUESTA
+  // ================================================
 
   window[nombreCallback] = function(datos) {
 
@@ -256,13 +261,12 @@ function consultarAppsScript(id) {
     );
 
 
-    // Eliminar script temporal
+    // Eliminar función temporal
 
-    const script =
-      document.getElementById(nombreCallback);
-
-    if (script) {
-      script.remove();
+    try {
+      delete window[nombreCallback];
+    } catch (e) {
+      window[nombreCallback] = undefined;
     }
 
 
@@ -406,7 +410,9 @@ function consultarAppsScript(id) {
   };
 
 
-  // Crear script para JSONP
+  // ================================================
+  // CREAR SCRIPT JSONP
+  // ================================================
 
   const script =
     document.createElement("script");
@@ -427,6 +433,42 @@ function consultarAppsScript(id) {
   document.body.appendChild(script);
 
 
+  // ================================================
+  // CONTROL DE TIEMPO DE ESPERA
+  // ================================================
+
+  setTimeout(function() {
+
+    if (
+      typeof window[nombreCallback] === "function"
+    ) {
+
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="error">
+
+          <h2>
+            ❌ Sin respuesta
+          </h2>
+
+          <p>
+            Apps Script no respondió.
+          </p>
+
+        </div>
+
+      `;
+
+      try {
+        delete window[nombreCallback];
+      } catch (e) {
+        window[nombreCallback] = undefined;
+      }
+
+    }
+
+  }, 10000);
+
 }
 
 
@@ -440,12 +482,15 @@ function formatearFecha(fecha) {
     return "";
   }
 
+
   const fechaObjeto =
     new Date(fecha);
+
 
   if (isNaN(fechaObjeto)) {
     return fecha;
   }
+
 
   return fechaObjeto.toLocaleString(
     "es-PE",
@@ -482,7 +527,6 @@ window.onload = function() {
   iniciarEscaner();
 
 };
-
 
 </script>
 
