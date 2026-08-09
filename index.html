@@ -120,21 +120,32 @@ function iniciarEscaner() {
     },
 
 
-    function(codigo) {
+  function(codigo) {
 
-      console.log(
-        "QR detectado:",
-        codigo
-      );
+  console.log("QR detectado:", codigo);
 
+  document.getElementById("resultado").innerHTML = `
+    <div style="
+      padding:20px;
+      border:3px solid green;
+      border-radius:15px;
+      background:white;
+    ">
 
-      lectorQR.stop().then(function() {
+      <h2>✅ QR LEÍDO</h2>
 
-        registrarAsistencia(codigo);
+      <h1>${codigo}</h1>
 
-      });
+      <p>La cámara y el lector funcionan correctamente.</p>
 
-    },
+      <p>Ahora vamos a probar la conexión.</p>
+
+    </div>
+  `;
+
+  lectorQR.stop();
+
+},
 
 
     function(error) {
