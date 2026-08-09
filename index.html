@@ -2,14 +2,18 @@
 <html lang="es">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>INFRALOG 2026 - Lector QR</title>
+  <meta charset="UTF-8">
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>INFRALOG 2026 - Registro</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
+
     body {
       font-family: Arial, sans-serif;
       margin: 0;
@@ -20,7 +24,7 @@
 
     .contenedor {
       max-width: 500px;
-      margin: 30px auto;
+      margin: 20px auto;
       background: white;
       padding: 25px;
       border-radius: 15px;
@@ -33,13 +37,38 @@
 
     h2 {
       margin-top: 5px;
-      font-weight: normal;
     }
 
     #lectorQR {
       width: 100%;
       max-width: 400px;
       margin: 20px auto;
+    }
+
+    #resultado {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    .exito {
+      padding: 20px;
+      border: 2px solid green;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+
+    .alerta {
+      padding: 20px;
+      border: 2px solid orange;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+
+    .error {
+      padding: 20px;
+      border: 2px solid red;
+      border-radius: 12px;
+      margin-top: 20px;
     }
 
     button {
@@ -50,15 +79,14 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      background: #222;
+      color: white;
     }
 
-    #resultado {
-      margin-top: 20px;
-      font-size: 18px;
-    }
   </style>
 
 </head>
+
 
 <body>
 
@@ -66,88 +94,397 @@
 
     <h1>INFRALOG 2026</h1>
 
-    <h2>Lector QR</h2>
+    <h2>Registro de asistentes</h2>
 
     <p>
-      Pulsa el botón para activar la cámara.
+      Apunte la cámara hacia el código QR
     </p>
+
+
+    <!-- LECTOR QR -->
 
     <div id="lectorQR"></div>
 
+
+    <!-- RESULTADO -->
+
     <div id="resultado">
-      Esperando código...
+      📷 Esperando código QR...
     </div>
+
+
+    <button onclick="reiniciarEscaner()">
+      📷 Escanear otro QR
+    </button>
 
   </div>
 
 
-  <script>
-
-    let lectorQR = null;
+<script>
 
 
-    function iniciarLector() {
+// ==================================================
+// URL DE TU GOOGLE APPS SCRIPT
+// ==================================================
 
-      lectorQR = new Html5Qrcode("lectorQR");
-
-
-      const configuracion = {
-        fps: 10,
-        qrbox: {
-          width: 250,
-          height: 250
-        }
-      };
+const URL_APPS_SCRIPT =
+"https://script.google.com/macros/s/AKfycbzUz3S11j8Efrm1_3uN0KjifOCN96NbXt4Rn6ZKe0wqF4kmkvpje0vT4hhMjTMVjkpu/exec";
 
 
-      lectorQR.start(
+// ==================================================
+// VARIABLE DEL LECTOR
+// ==================================================
 
-        {
-          facingMode: "environment"
-        },
+let lectorQR = null;
 
-        configuracion,
 
-        function(codigo) {
+// ==================================================
+// INICIAR ESCÁNER
+// ==================================================
 
-          console.log("QR detectado:", codigo);
+function iniciarEscaner() {
 
-          document.getElementById("resultado").innerHTML =
-            "<h2>✅ Código detectado</h2>" +
-            "<h1>" + codigo + "</h1>";
+  document.getElementById("resultado").innerHTML =
+    "📷 Buscando código QR...";
 
-          lectorQR.stop();
 
-        },
+  lectorQR = new Html5Qrcode("lectorQR");
 
-        function(error) {
 
-          // Errores normales mientras busca el QR.
-          // No mostramos nada.
+  const configuracion = {
 
-        }
+    fps: 10,
 
-      ).catch(function(error) {
+    qrbox: {
+      width: 250,
+      height: 250
+    }
 
-        console.error(error);
+  };
 
-        document.getElementById("resultado").innerHTML =
-          "<p style='color:red'>" +
-          "❌ No se pudo acceder a la cámara." +
-          "</p>";
+
+  lectorQR.start(
+
+    {
+      facingMode: "environment"
+    },
+
+    configuracion,
+
+
+    function(codigoEscaneado) {
+
+      console.log(
+        "Código detectado:",
+        codigoEscaneado
+      );
+
+
+      // Detener cámara
+
+      lectorQR.stop().then(function() {
+
+        consultarAppsScript(codigoEscaneado);
 
       });
+
+    },
+
+
+    function(error) {
+
+      // No mostrar errores normales
+      // mientras busca el QR.
+
+    }
+
+  )
+
+  .catch(function(error) {
+
+    console.error(error);
+
+    document.getElementById("resultado").innerHTML = `
+
+      <div class="error">
+
+        ❌ No se pudo acceder a la cámara.
+
+        <br><br>
+
+        Verifique los permisos del navegador.
+
+      </div>
+
+    `;
+
+  });
+
+}
+
+
+// ==================================================
+// CONSULTAR GOOGLE APPS SCRIPT
+// ==================================================
+
+function consultarAppsScript(id) {
+
+
+  document.getElementById("resultado").innerHTML = `
+
+    <p>🔍 Código detectado:</p>
+
+    <h2>${id}</h2>
+
+    <p>⏳ Registrando asistencia...</p>
+
+  `;
+
+
+  // JSONP
+
+  const nombreCallback =
+    "respuesta_" + Date.now();
+
+
+  window[nombreCallback] = function(datos) {
+
+
+    console.log(
+      "Respuesta Apps Script:",
+      datos
+    );
+
+
+    // Eliminar script temporal
+
+    const script =
+      document.getElementById(nombreCallback);
+
+    if (script) {
+      script.remove();
+    }
+
+
+    // ==========================================
+    // INVITADO NO ENCONTRADO
+    // ==========================================
+
+    if (
+      datos.mensaje === "NO_ENCONTRADO"
+    ) {
+
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="error">
+
+          <h2>
+            ❌ Invitado no encontrado
+          </h2>
+
+          <p>
+            Código: <b>${id}</b>
+          </p>
+
+        </div>
+
+      `;
+
+      return;
 
     }
 
 
-    // Iniciar automáticamente
+    // ==========================================
+    // ERROR
+    // ==========================================
 
-    window.onload = function() {
-      iniciarLector();
-    };
+    if (
+      datos.mensaje === "ERROR"
+    ) {
 
-  </script>
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="error">
+
+          <h2>❌ Error</h2>
+
+          <p>
+            ${datos.error}
+          </p>
+
+        </div>
+
+      `;
+
+      return;
+
+    }
+
+
+    // ==========================================
+    // YA REGISTRADO
+    // ==========================================
+
+    if (
+      datos.mensaje === "YA_REGISTRADO"
+    ) {
+
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="alerta">
+
+          <h2>
+            ⚠️ YA REGISTRADO
+          </h2>
+
+          <h3>
+            ${datos.nombre}
+            ${datos.apellido}
+          </h3>
+
+          <p>
+            <b>Empresa:</b>
+            ${datos.empresa}
+          </p>
+
+          <p>
+            Este invitado ya registró su ingreso.
+          </p>
+
+        </div>
+
+      `;
+
+      return;
+
+    }
+
+
+    // ==========================================
+    // REGISTRO EXITOSO
+    // ==========================================
+
+    if (
+      datos.mensaje === "REGISTRADO"
+    ) {
+
+      document.getElementById("resultado").innerHTML = `
+
+        <div class="exito">
+
+          <h2>
+            ✅ REGISTRO EXITOSO
+          </h2>
+
+          <h3>
+            ${datos.nombre}
+            ${datos.apellido}
+          </h3>
+
+          <p>
+            <b>Cargo:</b>
+            ${datos.cargo}
+          </p>
+
+          <p>
+            <b>Empresa:</b>
+            ${datos.empresa}
+          </p>
+
+          <p>
+            <b>Ingreso registrado:</b>
+            ${formatearFecha(datos.horaIngreso)}
+          </p>
+
+        </div>
+
+      `;
+
+    }
+
+  };
+
+
+  // Crear script para JSONP
+
+  const script =
+    document.createElement("script");
+
+
+  script.id =
+    nombreCallback;
+
+
+  script.src =
+    URL_APPS_SCRIPT +
+    "?id=" +
+    encodeURIComponent(id) +
+    "&callback=" +
+    nombreCallback;
+
+
+  document.body.appendChild(script);
+
+
+}
+
+
+// ==================================================
+// FORMATEAR FECHA
+// ==================================================
+
+function formatearFecha(fecha) {
+
+  if (!fecha) {
+    return "";
+  }
+
+  const fechaObjeto =
+    new Date(fecha);
+
+  if (isNaN(fechaObjeto)) {
+    return fecha;
+  }
+
+  return fechaObjeto.toLocaleString(
+    "es-PE",
+    {
+      dateStyle: "short",
+      timeStyle: "medium"
+    }
+  );
+
+}
+
+
+// ==================================================
+// REINICIAR ESCÁNER
+// ==================================================
+
+function reiniciarEscaner() {
+
+  document.getElementById("resultado").innerHTML =
+    "📷 Preparando cámara...";
+
+
+  iniciarEscaner();
+
+}
+
+
+// ==================================================
+// INICIAR AUTOMÁTICAMENTE
+// ==================================================
+
+window.onload = function() {
+
+  iniciarEscaner();
+
+};
+
+
+</script>
 
 </body>
 
